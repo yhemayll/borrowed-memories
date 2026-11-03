@@ -1,0 +1,195 @@
+/* The reconstructed living room. Positions are percentages of a 16:9 room; sizes in cqw scale with it. */
+
+.room {
+  position: relative;
+  width: min(100cqw, 177.78cqh);
+  aspect-ratio: 16 / 9;
+  container-type: inline-size;
+  overflow: hidden;
+  filter: blur(calc((1 - var(--clarity)) * 1.2px + var(--loss) * 2.5px)) sepia(calc(0.25 + var(--loss) * 0.45)) saturate(calc(1.05 - var(--loss) * 0.6)) brightness(calc(1 - var(--loss) * 0.25));
+  transition: filter 3s ease;
+}
+.room > * { position: absolute; }
+.room.phase-intro { filter: blur(8px) brightness(0.35) sepia(0.6); }
+.room.phase-fading { filter: blur(6px) brightness(0.05) grayscale(1); transition: filter 7s ease-in; }
+.room.phase-ending { filter: none; }
+
+/* ---------- architecture ---------- */
+
+.wall {
+  inset: 0 0 25% 0;
+  background:
+    radial-gradient(circle, rgba(110, 70, 30, 0.2) 0 0.3cqw, transparent 0.35cqw) 0 0 / 3cqw 3cqw,
+    radial-gradient(circle, rgba(255, 245, 210, 0.16) 0 0.18cqw, transparent 0.22cqw) 1.5cqw 1.5cqw / 3cqw 3cqw,
+    repeating-linear-gradient(90deg, rgba(90, 60, 25, 0.09) 0 0.12cqw, transparent 0.12cqw 3cqw),
+    linear-gradient(180deg, #a8925f, #b9a77c 40%, #9c8656);
+}
+.floor { inset: 75% 0 0 0; background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.1) 0 0.1cqw, transparent 0.1cqw 5cqw), linear-gradient(180deg, #7a5a3e, #5e432e 40%, #3a281b); }
+.skirting { left: 0; right: 0; top: 73.8%; height: 1.4%; background: linear-gradient(#6f4a2c, #3b2516); }
+.lamp { left: 44%; top: 0; width: 8%; height: 15%; pointer-events: none; }
+.lamp .cord { position: absolute; left: 50%; width: 0.12cqw; height: 60%; background: #2a1d14; }
+.lamp .shade { position: absolute; left: 0; right: 0; top: 58%; height: 36%; background: linear-gradient(#f0c97c, #b0702c); clip-path: polygon(28% 0, 72% 0, 100% 100%, 0 100%); }
+
+/* ---------- pieces and their states ---------- */
+
+.piece { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; transition: filter 3s ease, opacity 3s ease, transform 3s ease; }
+.piece > i, .piece > span { position: absolute; display: block; }
+.piece:hover { outline: 0.12cqw dashed rgba(255, 225, 170, 0.45); outline-offset: 0.4cqw; }
+.piece:focus-visible { outline: 0.15cqw dashed #d6a058; outline-offset: 0.4cqw; }
+
+.st-unknown { filter: blur(0.35cqw) brightness(0.22) contrast(0.6); opacity: 0.6; }
+.st-suggested { filter: blur(0.25cqw) saturate(0.25) brightness(1.1); opacity: 0.5; }
+.st-reconstructed { filter: none; opacity: 1; }
+.st-uncertain { filter: blur(0.18cqw) saturate(0.6); opacity: 0.72; animation: waver 4s ease-in-out infinite; }
+.st-contradicted { filter: hue-rotate(150deg) contrast(1.5) saturate(1.6); opacity: 0.85; animation: glitch 1.6s steps(2, end) infinite; }
+.st-removed { opacity: 0; filter: blur(1cqw); pointer-events: none; }
+@keyframes waver { 50% { opacity: 0.45; filter: blur(0.35cqw) saturate(0.5); } }
+@keyframes glitch {
+  0% { transform: translate(0, 0) skewX(0); clip-path: inset(0 0 0 0); }
+  20% { transform: translate(0.4cqw, -0.1cqw) skewX(-4deg); clip-path: inset(10% 0 35% 0); }
+  40% { transform: translate(-0.3cqw, 0.2cqw); clip-path: inset(0 0 0 0); }
+  60% { transform: translate(0.2cqw, 0) skewX(3deg); clip-path: inset(45% 0 5% 0); }
+  80% { transform: none; clip-path: inset(0 0 0 0); }
+}
+
+/* front door: the apartment's entrance, quilted, with a number */
+.front-door { left: 2.5%; top: 11%; width: 10%; height: 62.8%; box-shadow: 0 0 0 0.55cqw #d8ccb4; perspective: 60cqw; }
+.front-door .stair { inset: 0; background: linear-gradient(#5d6266, #2e3134); }
+.front-door .leaf { inset: 0; transform-origin: left center; transition: transform 2.4s cubic-bezier(0.4, 0, 0.2, 1); background: #6e3a2a; }
+.front-door .quilt { inset: 6% 10%; background: radial-gradient(circle, #c9a56b 0 0.18cqw, transparent 0.22cqw) 0 0 / 1.6cqw 1.6cqw, #7d4532; border-radius: 0.4cqw; box-shadow: inset 0 0 0.6cqw rgba(0, 0, 0, 0.45); }
+.front-door .handle { right: 12%; top: 50%; width: 1.3cqw; height: 0.4cqw; background: #c9a56b; border-radius: 0.2cqw; }
+.front-door .number { left: 42%; top: 9%; width: 1.4cqw; height: 0.9cqw; background: #c9a56b; border-radius: 0.15cqw; }
+.door-open .leaf { transform: rotateY(-80deg); }
+.grandmother { left: 3.4%; top: 21%; width: 8.2%; height: 52.5%; z-index: 1; }
+
+/* window and weather */
+.window { left: 16%; top: 13%; width: 15%; height: 38%; }
+.window .outside { inset: 0; overflow: hidden; background: linear-gradient(#c8ccc9, #e4e4dd); transition: background 4s; }
+.window .frame { inset: 0; border: 0.6cqw solid #e6dccb; background: linear-gradient(90deg, transparent calc(50% - 0.22cqw), #e6dccb calc(50% - 0.22cqw) calc(50% + 0.22cqw), transparent 0), linear-gradient(transparent 32%, #e6dccb 32% calc(32% + 0.45cqw), transparent 0); box-shadow: 0 0.3cqw 0.6cqw rgba(0, 0, 0, 0.25); }
+.window .blocks { left: 0; right: 0; bottom: 0; height: 55%; background: linear-gradient(90deg, #6d7177 0 30%, transparent 30% 38%, #5f6369 38% 66%, transparent 66% 72%, #707479 72%); opacity: 0.15; transition: opacity 4s; }
+.window .snow, .window .rain { inset: -100% 0 0 0; opacity: 0; transition: opacity 4s; }
+.window .snow { background: radial-gradient(circle, #fff 0 0.14cqw, transparent 0.18cqw) 0 0 / 2.2cqw 2.4cqw, radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 0.1cqw, transparent 0.14cqw) 1cqw 1.3cqw / 1.7cqw 1.9cqw; animation: fall 9s linear infinite; }
+.window .rain { background: repeating-linear-gradient(100deg, transparent 0 0.9cqw, rgba(220, 230, 240, 0.45) 0.9cqw 1cqw) 0 0 / 100% 3cqw; animation: fall 1.2s linear infinite; }
+@keyframes fall { to { transform: translateY(50%); } }
+.weather-snow .window .outside { background: linear-gradient(#5d6b80, #a9b4c0 70%, #e9eef2); }
+.weather-snow .window .snow { opacity: 1; }
+.weather-snow .window .blocks, .weather-rain .window .blocks { opacity: 1; }
+.weather-snow .window .blocks { box-shadow: inset 0 0.5cqw #f4f6f8; }
+.weather-rain .window .outside { background: linear-gradient(#4d545a, #7d858b); }
+.weather-rain .window .rain { opacity: 1; }
+
+/* carpets */
+.wall_carpet { left: 35%; top: 8%; width: 25%; height: 33%; }
+.wall_carpet .weave, .floor_carpet .weave {
+  inset: 0;
+  border: 0.9cqw solid #3d1a1c;
+  background:
+    radial-gradient(ellipse 22% 30% at 50% 50%, #d9a74a 0 30%, #2c4a6e 31% 48%, transparent 50%),
+    repeating-conic-gradient(from 45deg, #8e2a25 0 25%, #a8352c 0 50%) 0 0 / 2.2cqw 2.2cqw;
+  box-shadow: inset 0 0 0 0.35cqw #d9a74a, 0 0.4cqw 0.8cqw rgba(0, 0, 0, 0.35);
+}
+.floor_carpet { left: 19%; top: 77%; width: 57%; height: 21%; }
+.floor_carpet .weave { border-width: 0.7cqw; transform: perspective(40cqw) rotateX(35deg); transform-origin: bottom; background: radial-gradient(ellipse 18% 40% at 50% 50%, #d9a74a 0 30%, #2c4a6e 31% 48%, transparent 50%), repeating-conic-gradient(from 45deg, #7c2622 0 25%, #93302a 0 50%) 0 0 / 2.6cqw 2.6cqw; }
+
+/* photograph: its figures follow the people's statuses */
+.photograph { left: 63.5%; top: 14%; width: 7%; height: 12.5%; background: #3a2617; box-shadow: 0 0.4cqw 0.8cqw rgba(0, 0, 0, 0.35); }
+.photograph .print { inset: 0.55cqw; overflow: hidden; background: linear-gradient(90deg, #f4efe4 0 18%, #c8b38a 18%), #c8b38a; filter: blur(var(--photo-blur)) sepia(0.6); transition: filter 3s; }
+.photograph .f { position: absolute; bottom: -8%; width: 22%; height: 66%; background: radial-gradient(circle at 50% 16%, #4a3622 0 16%, transparent 17%), radial-gradient(ellipse 50% 58% at 50% 100%, #4a3622 98%, transparent 100%); transition: opacity 3s, filter 3s; }
+.photograph .f-father { left: 4%; }
+.photograph .f-mother { left: 28%; }
+.photograph .f-child { left: 52%; height: 42%; width: 18%; }
+.photograph .f-grandmother { left: 74%; height: 70%; }
+.photograph .f.st-unknown, .photograph .f.st-removed { opacity: 0; }
+.photograph .f.st-suggested { opacity: 0.35; }
+
+/* sideboard, television, radio */
+.sideboard { left: 75%; top: 52%; width: 21%; height: 21.5%; background: linear-gradient(#6b4429, #4a2d1a); box-shadow: 0 0.6cqw 0.8cqw rgba(0, 0, 0, 0.35); pointer-events: none; }
+.sideboard i { position: absolute; top: 30%; bottom: 8%; width: 44%; border: 0.18cqw solid rgba(0, 0, 0, 0.3); }
+.sideboard i:first-child { left: 4%; }
+.sideboard i:last-child { right: 4%; }
+.television { left: 77.5%; top: 29%; width: 15.5%; height: 23%; background: linear-gradient(#7a5233, #4f321e); border-radius: 0.6cqw; box-shadow: 0 0.4cqw 0.7cqw rgba(0, 0, 0, 0.4); }
+.television .screen { left: 7%; top: 9%; width: 70%; height: 80%; border-radius: 18% / 22%; background: #2b302f; overflow: hidden; box-shadow: inset 0 0 1cqw rgba(0, 0, 0, 0.7); }
+.television .glow { inset: 0; opacity: 0; background: radial-gradient(ellipse at 50% 45%, #c8d6dc, #6d8590 70%); transition: opacity 1.5s; }
+.television::after { content: ''; position: absolute; right: 6%; top: 18%; width: 12%; aspect-ratio: 1; border-radius: 50%; background: #c9a56b; box-shadow: 0 2.6cqw 0 #c9a56b; }
+.music-on .television.st-reconstructed .glow { opacity: 1; animation: tv 0.18s steps(2) infinite; }
+@keyframes tv { 50% { opacity: 0.86; } }
+.radio { left: 80%; top: 41%; width: 11%; height: 11%; background: linear-gradient(#8a5a33, #5a3820); border-radius: 0.8cqw 0.8cqw 0.3cqw 0.3cqw; box-shadow: 0 0.4cqw 0.6cqw rgba(0, 0, 0, 0.4); }
+.radio .cloth { left: 6%; top: 12%; width: 36%; height: 76%; background: repeating-linear-gradient(45deg, #3a2a1c 0 0.15cqw, #6a5236 0.15cqw 0.35cqw); border-radius: 0.3cqw; }
+.radio .dial { left: 48%; top: 12%; width: 46%; height: 76%; background: linear-gradient(#e8d5a6, #c8b07a); border-radius: 0.3cqw; transition: box-shadow 1s, background 1s; }
+.music-on .radio .dial { background: linear-gradient(#fbe2a2, #e6b867); box-shadow: 0 0 1.4cqw rgba(255, 190, 90, 0.55); }
+.radio .needle { top: 12%; bottom: 12%; width: 0.15cqw; background: #8c2a1a; transition: left 0.8s cubic-bezier(0.3, 1.4, 0.5, 1); }
+
+.controls { top: 53.6%; display: flex; gap: 0.3cqw; z-index: 2; transition: left 2s; }
+.controls.on-radio { left: 79.5%; }
+.controls.on-tv { left: 78%; }
+.keys { display: flex; gap: 0.3cqw; }
+.keys button { border: 0; border-radius: 0.2cqw; padding: 0.35cqw 0.6cqw; font-family: var(--mono); font-size: 0.68cqw; letter-spacing: 0.04em; color: #2a1c10; background: linear-gradient(#f1e6cc, #cbb68a); box-shadow: 0 0.25cqw 0 #2a1a0e; cursor: pointer; transition: transform 0.12s, box-shadow 0.12s; }
+.keys button:hover { background: #fff3d8; }
+.keys button.down { transform: translateY(0.2cqw); box-shadow: 0 0.05cqw 0 #2a1a0e; background: #d9c08b; }
+
+/* the tea table, set for a winter gathering */
+.tea_table { left: 35%; top: 56%; width: 21%; height: 21%; }
+.tea_table .cloth { left: -3%; right: -3%; top: 0; height: 30%; background: linear-gradient(#f4efe4, #e0d6c2); border-radius: 0.3cqw; clip-path: polygon(0 0, 100% 0, 100% 70%, 92% 100%, 80% 70%, 66% 100%, 52% 70%, 38% 100%, 24% 70%, 10% 100%, 0 70%); }
+.tea_table .leg { top: 20%; bottom: 0; width: 5%; background: linear-gradient(90deg, #4a2d1a, #6b4429); }
+.tea_table .leg.a { left: 6%; }
+.tea_table .leg.b { right: 6%; }
+.tea_table .glass { top: -14%; width: 5%; height: 15%; background: linear-gradient(#b5652a 55%, rgba(255, 255, 255, 0.35) 55%); border: 0.15cqw solid #a99a7a; border-radius: 0 0 0.2cqw 0.2cqw; }
+.tea_table .g1 { left: 22%; }
+.tea_table .g2 { left: 70%; }
+.tea_table .kettle { left: 44%; top: -20%; width: 10%; height: 21%; background: radial-gradient(circle at 50% 70%, #f2f2ee 55%, transparent 57%); }
+.tea_table .kettle::after { content: ''; position: absolute; right: -25%; top: 40%; width: 35%; height: 0.35cqw; background: #e0e0da; transform: rotate(-30deg); }
+.tea_table .plate { left: 30%; top: -5%; width: 12%; height: 6%; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #f08a2a 0 22%, transparent 24%), radial-gradient(circle at 70% 40%, #f08a2a 0 22%, transparent 24%), #ece4d4; }
+
+/* samovar on the floor */
+.samovar { left: 64.5%; top: 62%; width: 4.6%; height: 15%; }
+.samovar .body { left: 10%; right: 10%; top: 22%; bottom: 14%; border-radius: 40% 40% 25% 25%; background: linear-gradient(90deg, #7a4f1c, #e2b357 40%, #f6d98a 50%, #a8722a 80%); }
+.samovar .top { left: 30%; right: 30%; top: 6%; height: 18%; background: linear-gradient(90deg, #7a4f1c, #e2b357, #7a4f1c); border-radius: 30% 30% 0 0; }
+.samovar .tap { left: -6%; top: 55%; width: 25%; height: 0.4cqw; background: #a8722a; }
+.samovar .steam { left: 35%; top: -40%; width: 30%; height: 40%; background: radial-gradient(ellipse, rgba(255, 255, 255, 0.5), transparent 70%); animation: steam 3s ease-out infinite; opacity: 0; }
+.samovar.st-reconstructed .steam { opacity: 1; }
+@keyframes steam { from { transform: translateY(30%) scale(0.6); } to { transform: translateY(-40%) scale(1.3); opacity: 0; } }
+
+/* people: faceless, like figures in a faded photograph */
+.person { inset: 0; }
+.person i { position: absolute; display: block; }
+.person .head { left: 32%; top: 5%; width: 36%; aspect-ratio: 1; border-radius: 50%; background: #d9b08c; box-shadow: inset 0 -0.3cqw 0 rgba(0, 0, 0, 0.1); }
+.person .body { left: 18%; top: 21%; width: 64%; height: 50%; border-radius: 45% 45% 12% 12%; }
+.person .chair { left: 4%; right: 4%; bottom: 0; height: 36%; border-top: 0.6cqw solid #6b4429; }
+.person .chair::before { content: ''; position: absolute; top: 0; bottom: 0; width: 0.5cqw; background: #4a2d1a; left: 8%; box-shadow: 4.4cqw 0 0 #4a2d1a; }
+.p-mother .body { background: linear-gradient(#8c3b3b, #6e2c2c); }
+.p-mother .head { background: radial-gradient(circle at 50% 25%, #5a3420 0 45%, transparent 47%), #d9b08c; }
+.p-mother .prop { right: -14%; top: 36%; width: 34%; height: 15%; background: radial-gradient(circle at 40% 60%, #f2f2ee 60%, transparent 62%); }
+.mother.st-reconstructed .head { animation: hum 2.4s ease-in-out infinite; }
+@keyframes hum { 50% { transform: rotate(4deg) translateX(3%); } }
+.p-father .body { background: linear-gradient(#4b5a6b, #38444f); }
+.p-father .prop { left: 2%; top: 12%; width: 80%; height: 40%; background: repeating-linear-gradient(#ece6d8 0 0.35cqw, #b9b2a2 0.35cqw 0.45cqw); transform: rotate(-6deg); box-shadow: 0 0.2cqw 0.4cqw rgba(0, 0, 0, 0.25); }
+.p-child .chair, .p-grandma .chair { display: none; }
+.p-child .head { left: 28%; top: 6%; width: 44%; background: radial-gradient(circle at 50% 20%, #a87a3a 0 42%, transparent 44%), #e2bb98; }
+.p-child .body { left: 12%; top: 34%; width: 76%; height: 62%; background: linear-gradient(#c9a24a, #a8842e); border-radius: 50% 50% 20% 20%; }
+.p-grandma .head { left: 34%; top: 4%; width: 32%; background: #d9b08c; }
+.p-grandma .prop { left: 26%; top: 1%; width: 48%; height: 18%; background: #b8873a; clip-path: polygon(50% 0, 100% 75%, 85% 100%, 15% 100%, 0 75%); }
+.p-grandma .body { left: 14%; top: 17%; width: 72%; height: 83%; border-radius: 40% 40% 6% 6%; background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0 0.12cqw, transparent 0.16cqw) 0 0 / 1.2cqw 1.4cqw, linear-gradient(#3f3a36, #2c2825); }
+.father { left: 27%; top: 40%; width: 8%; height: 37%; }
+.mother { left: 55.5%; top: 40%; width: 8%; height: 37%; }
+.child { left: 44.5%; top: 75%; width: 6%; height: 17%; z-index: 1; }
+
+/* toys on the carpet */
+.nevalyashka { left: 35%; top: 85%; width: 2.4%; height: 7%; z-index: 1; }
+.nevalyashka .b { left: 0; right: 0; bottom: 0; height: 64%; border-radius: 50%; background: radial-gradient(circle at 50% 60%, #f4d24a 0 18%, transparent 20%), #c7302a; }
+.nevalyashka .h { left: 18%; right: 18%; top: 4%; height: 44%; border-radius: 50%; background: radial-gradient(circle at 50% 60%, #f2d2b6 0 45%, #c7302a 47%); }
+.nevalyashka.st-reconstructed { animation: rock 3.5s ease-in-out infinite; transform-origin: bottom; }
+@keyframes rock { 25% { transform: rotate(10deg); } 75% { transform: rotate(-10deg); } }
+.matryoshka { left: 56%; top: 84%; width: 3.6%; height: 8%; z-index: 1; }
+.matryoshka i { bottom: 0; border-radius: 45% 45% 30% 30%; background: radial-gradient(circle at 50% 30%, #f2d2b6 0 16%, #e8c34a 17% 20%, transparent 21%), linear-gradient(#c7302a 0 55%, #e8c34a 55% 62%, #c7302a 62%); }
+.matryoshka .m1 { left: 0; width: 56%; height: 100%; }
+.matryoshka .m2 { right: 0; width: 38%; height: 68%; }
+.cheburashka { left: 62%; top: 89.5%; width: 4.6%; height: 5%; z-index: 1; }
+.cheburashka .b { left: 25%; right: 10%; top: 25%; bottom: 0; border-radius: 45%; background: #8a5a35; }
+.cheburashka .ear { top: 0; width: 38%; height: 80%; border-radius: 50%; background: radial-gradient(circle at 60% 50%, #d7a77a 0 38%, #8a5a35 40%); }
+.cheburashka .ear.l { left: -6%; }
+.cheburashka .ear.r { left: 14%; top: 20%; }
+
+/* atmosphere */
+.light { inset: 0; pointer-events: none; mix-blend-mode: soft-light; background: radial-gradient(ellipse 60% 70% at 48% 15%, rgba(255, 196, 110, 0.75), rgba(60, 30, 10, 0.5) 75%); }
+.weather-rain .light { background: radial-gradient(ellipse 60% 70% at 48% 15%, rgba(220, 200, 160, 0.55), rgba(20, 30, 40, 0.6) 75%); }
+.vignette { inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent calc(55% - var(--loss) * 30%), rgba(0, 0, 0, calc(0.4 + var(--loss) * 0.5))); transition: background 3s; }

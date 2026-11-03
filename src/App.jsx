@@ -1,345 +1,244 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import CityScene from './CityScene.jsx'
-import Hud from './Hud.jsx'
-import LabScene from './LabScene.jsx'
-import OutbreakLayer from './OutbreakLayer.jsx'
-import { loadKit, prepare } from './city.js'
-import { LIFT_START } from './lab.js'
-import { STAGES, WEEKS, infectedAt, simulate, stageAt } from './outbreak.js'
-import { INFECTION_STOPS } from './palette.js'
+import { useEffect, useMemo, useState } from 'react'
+import Room from './Room.jsx'
+import { ELEMENTS, LIMITS } from './actions.js'
+import { LABELS, createMind } from './mind.js'
+import { sound } from './sound.js'
 
-const ATTRIBUTION =
-  'Buildings: 3D building models LoD2 © GDI-Th (dl-de/by-2-0). Land use and pedestrian network: Egor Gaydukov, InfAU, Bauhaus-Universität Weimar. Census grid: Zensus 2022, © Statistische Ämter des Bundes und der Länder (dl-de/by-2-0).'
-
-const PLAY_WEEKS_PER_S = 0.2 // five seconds a week
-const HUD_AFTER_MS = 4200 // the surveillance feed comes up once the section is open
-const MUSIC_URL = `${import.meta.env.BASE_URL}music/final-countdown.wav`
-const CLICK_URL = `${import.meta.env.BASE_URL}music/click.mp3`
-
-const fmt = (n) => n.toLocaleString('en-GB')
+const SPEAKERS = { memory: 'The memory', mother: 'Mother', father: 'Father', grandmother: 'Grandmother', child: 'The child', doctor: 'The doctor' }
+const NAMES = { ...LABELS, mother: 'Mother', father: 'Father', child: 'The child', grandmother: 'Grandmother', weather: 'The weather', knock: 'The knock at the door' }
+const LOCAL_NOTE = 'AI intelligence runs locally. Open the project on localhost to experience the interactive memory system.'
+const SAVE = 'borrowed-memories-fragments'
 
 export default function App() {
-  const [city, setCity] = useState(null)
-  const [error, setError] = useState(null)
-  const [week, setWeek] = useState(0)
-  const [playing, setPlaying] = useState(false)
-  const [intro, setIntro] = useState(true)
-  const [discovery, setDiscovery] = useState(false)
-  const [revealStart, setRevealStart] = useState(null) // when the underground reveal began, or null
-  const [liftStart, setLiftStart] = useState(null) // when the lift last set off
-  const [view, setView] = useState({ i: 0, n: 0 }) // the camera angle of the section
-  const [hud, setHud] = useState(false)
-  const lab = revealStart != null
+  const [s, setS] = useState(null)
+  const mind = useMemo(() => createMind(sound, setS), [])
+  useEffect(() => setS(mind.get()), [mind])
 
+  // One clock for the whole reconstruction: stillness, and when to ask the AI.
   useEffect(() => {
-    loadKit()
-      .then((raw) => setCity(prepare(raw)))
-      .catch((e) => setError(`The city kit didn't load (${e.message}).`))
-  }, [])
-
-  const sim = useMemo(() => city && simulate(city), [city])
-
-  // Play: move the slider forward until the last week.
-  useEffect(() => {
-    if (!playing) return
     let last = performance.now()
-    let frame
-    const step = (now) => {
-      const dt = (now - last) / 1000
+    const id = setInterval(() => {
+      const now = performance.now()
+      mind.tick((now - last) / 1000)
       last = now
-      setWeek((w) => Math.min(w + dt * PLAY_WEEKS_PER_S, WEEKS))
-      frame = requestAnimationFrame(step)
-    }
-    frame = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(frame)
-  }, [playing])
+    }, 250)
+    return () => clearInterval(id)
+  }, [mind])
 
-  // Reaching the last week reveals the discovery, once each time the slider arrives there.
-  const atEnd = week >= WEEKS
-  useEffect(() => {
-    if (!atEnd) return setDiscovery(false)
-    setPlaying(false)
-    const t = setTimeout(() => setDiscovery(true), 1100) // let the map catch up first
-    return () => clearTimeout(t)
-  }, [atEnd])
-
-  // The underground reveal: the section cuts through the city, the laboratory lights up, the lift goes down.
-  const revealLab = () => {
-    click()
-    const now = performance.now()
-    setDiscovery(false)
-    setPlaying(false)
-    setRevealStart(now)
-    setLiftStart(now + LIFT_START * 1000)
-    setView({ i: 0, n: 0 })
-  }
-  useEffect(() => {
-    if (!lab) return setHud(false)
-    const t = setTimeout(() => setHud(true), HUD_AFTER_MS)
-    return () => clearTimeout(t)
-  }, [lab])
-
-  // Background music, looping once the simulation begins.
-  const music = useRef(null)
-
-  // A click sound for the main buttons, restarted on every press.
-  const clickSound = useRef(null)
-  const click = () => {
-    const s = clickSound.current
-    if (!s) return
-    s.currentTime = 0
-    s.play().catch(() => {})
-  }
-
-  const begin = () => {
-    click()
-    setIntro(false)
-    setWeek(0)
-    music.current?.play().catch(() => {})
-  }
-
-  const scrub = (w) => {
-    setPlaying(false)
-    setWeek(w)
-  }
-
-  const togglePlay = () => {
-    if (!playing) click() // only when starting or resuming, not when pausing
-    if (!playing && week >= WEEKS) setWeek(0)
-    setPlaying(!playing)
-  }
-
-  const zero = sim?.sites[0]
-  const look = (i) => {
-    click()
-    setView((v) => ({ i, n: v.n + 1 }))
-  }
-
+  if (!s) return null
   return (
-    <div className={`app${discovery || lab ? ' covered' : ''}${lab ? ' underground' : ''}`} style={{ '--threat': (intro ? 0 : week / WEEKS).toFixed(3) }}>
-      <div className="scene">
-        {city && sim ? (
-          <CityScene city={city} spin={intro} revealStart={revealStart} view={view}>
-            {!intro && <OutbreakLayer sim={sim} week={week} />}
-            <LabScene bounds={city.bounds} site0={[zero.x, zero.y]} liftStart={liftStart} tags={hud && view.i !== 1} />
-          </CityScene>
-        ) : (
-          <p className="loading">{error ?? 'Loading the city…'}</p>
-        )}
-      </div>
-      <div className="atmosphere" aria-hidden="true" />
-
-      {!intro && !lab && sim && (
-        <>
-          <Status week={week} sim={sim} onStory={() => setIntro(true)} onReveal={atEnd && !discovery ? revealLab : null} />
-          <Timeline week={week} playing={playing} onScrub={scrub} onPlay={togglePlay} />
-          <Legend />
-        </>
-      )}
-
-      {intro && <Intro ready={!!sim} error={error} onBegin={begin} />}
-      {discovery && !lab && <Discovery onReveal={revealLab} onStay={() => setDiscovery(false)} />}
-      {lab && !hud && <Descent />}
-      {lab && hud && (
-        <Hud
-          revealStart={revealStart}
-          liftStart={liftStart}
-          view={view.i}
-          onView={look}
-          onLift={() => {
-            click()
-            setLiftStart(performance.now())
-          }}
-          onReturn={() => {
-            click()
-            setRevealStart(null)
-          }}
-        />
-      )}
-
-      <audio ref={music} src={MUSIC_URL} loop preload="auto" />
-      <audio ref={clickSound} src={CLICK_URL} preload="auto" />
-
-      <p className="attribution">{ATTRIBUTION}</p>
+    <div className={`app phase-${s.phase}`}>
+      <main className="scene">
+        <Room s={s} onInspect={mind.inspect} onMusic={mind.setMusic} />
+        {s.phase === 'awake' && s.inspect && <Inspect key={s.inspect.key} item={s.inspect} />}
+        {s.phase === 'awake' && s.question && <Question key={s.question.key} q={s.question} onAnswer={mind.answer} onSkip={mind.skip} />}
+        {s.caption && s.phase !== 'ending' && <Caption key={s.caption.key} caption={s.caption} />}
+      </main>
+      {s.phase !== 'intro' && s.ending !== 'sleep' && <Activity s={s} />}
+      {s.phase === 'intro' && <Intro s={s} onWake={mind.wake} />}
+      {s.phase === 'ending' && <Ending s={s} />}
     </div>
   )
 }
 
-function Intro({ ready, error, onBegin }) {
+function Intro({ s, onWake }) {
   return (
-    <div className="modal intro" role="dialog" aria-modal="true" aria-labelledby="intro-title">
-      <div className="modal-card">
-        <p className="eyebrow">An alternate-history simulation</p>
-        <h1 id="intro-title">
-          Weimar: Survival or the Next <span className="accent">Raccoon City?</span>
-        </h1>
-        <p className="subtitle">“Every city has secrets. Some should have stayed buried.”</p>
-        <div className="story">
-          <p>
-            In this version of history, Umbrella Corporation never stayed in Raccoon City. Its subsidiaries spread quietly
-            across Europe, buying warehouses, laboratories and leases under names nobody remembered.
-          </p>
-          <p>
-            In Weimar, one of those names rented a small industrial unit at the south-western edge of the old town. The
-            paperwork said cold storage for medical supplies. Below it, behind a door no inspector ever saw, Umbrella
-            sealed off a research level of its own.
-          </p>
-          <p>
-            For years the city noticed nothing: a few night deliveries, a hum under the pavement. Then, on a wet October
-            night, a pressure seal failed.
-          </p>
-          <p>What follows are four weeks, street by street.</p>
-        </div>
-        <button className="primary" onClick={onBegin} disabled={!ready}>
-          {ready ? 'Begin simulation' : error ? 'The city did not load' : 'Loading the city…'}
-        </button>
-        <p className="fiction">
-          A work of fiction. Umbrella Corporation, the facility and the outbreak are invented. The buildings and streets
-          are Weimar's real geometry from open data.
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function Status({ week, sim, onStory, onReveal }) {
-  const stage = stageAt(week)
-  const infected = infectedAt(sim.roofTimes, week)
-  const total = sim.roofs.length
-  const day = Math.round(week * 7)
-
-  return (
-    <aside className="panel">
-      <p className="eyebrow">Outbreak simulation · fiction</p>
-      <div className="week">
-        <span className="week-number">Week {stage.week}</span>
-        <span className="day">Day {day}</span>
-      </div>
-      <h2 key={stage.week} className="stage-title">
-        {stage.title}
-      </h2>
-      <p key={`t${stage.week}`} className="stage-text">
-        {stage.text}
-      </p>
-      <dl className="stats">
-        <div>
-          <dt>Buildings infected</dt>
-          <dd>
-            {fmt(infected)} <span>of {fmt(total)}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Share of the model</dt>
-          <dd>{Math.round((100 * infected) / total)}%</dd>
-        </div>
-      </dl>
-      <div className="meter" aria-hidden="true">
-        <div style={{ width: `${(100 * infected) / total}%` }} />
-      </div>
-      {onReveal && (
-        <button className="primary small" onClick={onReveal}>
-          Reveal underground lab
-        </button>
-      )}
-      <button className="link" onClick={onStory}>
-        Read the story again
+    <div className="intro" role="dialog" aria-modal="true" aria-labelledby="title">
+      <h1 id="title">Borrowed Memories</h1>
+      <p className="lede">{s.attempt > 1 ? 'Another session. Some fragments stayed.' : 'A memory is trying to remember one winter evening. It needs you.'}</p>
+      <button className="wake" onClick={onWake}>
+        Begin the reconstruction
       </button>
+      <p className="how">Click what you want to look at. Use the radio. When the memory asks, choose an answer. Nothing else is asked of you. Sound on.</p>
+      <p className={`status ${s.online ? 'on' : ''}`}>
+        {s.online == null ? 'Listening for the memory…' : s.online ? 'The memory is present: Claude Haiku, running on this computer.' : LOCAL_NOTE}
+      </p>
+    </div>
+  )
+}
+
+function Inspect({ item }) {
+  return (
+    <aside className="inspect" aria-live="polite">
+      <p className="label">{LABELS[item.id]}</p>
+      <p>{item.text}</p>
     </aside>
   )
 }
 
-function Timeline({ week, playing, onScrub, onPlay }) {
+function Caption({ caption }) {
   return (
-    <div className="timeline">
-      <button className="play" onClick={onPlay} aria-label={playing ? 'Pause' : 'Play the outbreak'}>
-        {playing ? '❚❚' : '▶'}
+    <p className={`caption speaker-${caption.speaker}`} aria-live="polite">
+      <span>{SPEAKERS[caption.speaker]}</span>
+      {caption.line}
+    </p>
+  )
+}
+
+function Question({ q, onAnswer, onSkip }) {
+  return (
+    <div className="question" role="dialog" aria-labelledby="q-text">
+      <p className="label">A fragment · {NAMES[q.element]}</p>
+      <h2 id="q-text">{q.question}</h2>
+      <div className="choices">
+        <button onClick={() => onAnswer('a')}>{q.a_label}</button>
+        <button onClick={() => onAnswer('b')}>{q.b_label}</button>
+      </div>
+      <button className="unsure" onClick={onSkip}>
+        I'm not sure
       </button>
-      <div className="track">
-        <input
-          type="range"
-          min="0"
-          max={WEEKS}
-          step="0.01"
-          value={week}
-          onChange={(e) => onScrub(Number(e.target.value))}
-          aria-label="Week of the outbreak"
-          aria-valuetext={`Week ${week.toFixed(1)}`}
-          style={{ '--fill': `${(100 * week) / WEEKS}%` }}
-        />
-        <ol className="ticks">
-          {STAGES.map((s) => (
-            <li key={s.week} style={{ left: `${(100 * s.week) / WEEKS}%` }}>
-              <button className={Math.floor(week + 1e-6) === s.week ? 'on' : ''} onClick={() => onScrub(s.week)}>
-                <b>
-                  <i>Week </i>
-                  {s.week}
-                </b>
-                <span>{s.title}</span>
+    </div>
+  )
+}
+
+function Activity({ s }) {
+  const [tab, setTab] = useState('events')
+  const [open, setOpen] = useState(() => window.matchMedia('(min-width: 900px)').matches)
+  const done = s.decisions.length
+  return (
+    <aside className={`activity ${open ? 'open' : ''}`}>
+      <button className="activity-head" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span>Memory activity</span>
+        <span className={`pulse ${s.busy ? 'thinking' : s.online ? 'on' : ''}`}>{s.online === false ? 'offline' : s.busy ? 'deciding' : 'observing'}</span>
+      </button>
+      {open && (
+        <>
+          <div className="meta">
+            <span>Coherence {s.coherence}%</span>
+            <span>Decision {done}/{LIMITS.cycles}</span>
+            <span title="tokens used of this attempt's budget">{Math.round(s.tokens / 1000)}k / {LIMITS.tokens / 1000}k tokens</span>
+          </div>
+          <div className={`coherence ${s.coherence < 55 ? 'low' : ''}`} aria-hidden="true">
+            <i style={{ width: `${s.coherence}%` }} />
+          </div>
+          <div className="tabs" role="tablist">
+            {[['events', 'Decisions'], ['scene', 'Reconstruction']].map(([t, label]) => (
+              <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>
+                {label}
               </button>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </div>
+            ))}
+          </div>
+          <div className="activity-body">
+            {s.online === false && <p className="note">{LOCAL_NOTE}</p>}
+            {tab === 'events' ? (
+              <>
+                {s.busy && <p className="note thinking">Comparing what you did with what it remembers…</p>}
+                {!done && !s.busy && s.online && <p className="note">It is watching what you do. It will act when it has seen enough.</p>}
+                {[...s.decisions].reverse().map((d) => (
+                  <Decision key={d.n} d={d} />
+                ))}
+              </>
+            ) : (
+              <Scene els={s.els} />
+            )}
+          </div>
+        </>
+      )}
+    </aside>
   )
 }
 
-function Legend() {
+function Decision({ d }) {
+  const n = String(d.n).padStart(3, '0')
+  if (d.failed)
+    return (
+      <article className="card failed">
+        <h3>Memory event {n}</h3>
+        <p>{d.result}</p>
+      </article>
+    )
   return (
-    <details className="legend" open={window.matchMedia('(min-width: 641px)').matches}>
-      <summary>Legend</summary>
-      <div className="ramp" style={{ background: `linear-gradient(to right, ${INFECTION_STOPS.join(', ')})` }} />
-      <div className="ramp-labels">
-        <span>new case</span>
-        <span>established</span>
-      </div>
-      <ul>
-        <li>
-          <span className="key glow" /> infection zone along the streets
-        </li>
-        <li>
-          <span className="key beam" /> outbreak site
-        </li>
-        <li>
-          <span className="key arc" /> spread from one site to the next
-        </li>
-        <li>
-          <span className="key dash" /> quarantine perimeter
-        </li>
-      </ul>
-      <p className="note">A fictional scenario. The markers are not real data.</p>
-    </details>
+    <article className={`card ${d.rejected ? 'failed' : ''}`}>
+      <h3>
+        Memory event {n} <span>· autonomous decision</span>
+      </h3>
+      <dl>
+        <dt>Observed</dt>
+        <dd>{d.observed}</dd>
+        <dt>Decision</dt>
+        <dd>{d.decision}</dd>
+        <dt>Action</dt>
+        <dd className="did">
+          <code>{d.action}</code> {d.result}
+        </dd>
+        <dt>Reason</dt>
+        <dd>{d.reason}</dd>
+      </dl>
+      <p className={`certainty u-${d.confidence === 'low' ? 'high' : 'low'}`}>confidence: {d.confidence}</p>
+    </article>
   )
 }
 
-function Discovery({ onReveal, onStay }) {
+function Scene({ els, only }) {
+  const ids = only ?? ELEMENTS
+  return ids.map((id) => {
+    const e = els[id]
+    return (
+      <div key={id} className={`el s-${e.status}`}>
+        <b>{NAMES[id]}</b>
+        <span className="pill">{e.status}</span>
+        <small>
+          {e.answer ? `You answered ${e.answer === 'a' ? 'yes' : 'no'}. ` : ''}
+          {e.by === 'memory' ? 'Placed by the memory. ' : ''}
+          {e.interp && `“${e.interp}” `}
+          {e.status !== 'unknown' && `Confidence ${Math.round(e.conf * 100)}%.`}
+        </small>
+      </div>
+    )
+  })
+}
+
+function Ending({ s }) {
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setShown(true), s.ending === 'sleep' ? 600 : 2500)
+    return () => clearTimeout(t)
+  }, [s.ending])
+  const fresh = () => {
+    try {
+      localStorage.removeItem(SAVE)
+    } catch {
+      /* nothing kept anyway */
+    }
+    location.reload()
+  }
+  const built = ELEMENTS.filter((id) => s.els[id].status === 'reconstructed')
+  const yours = built.filter((id) => s.els[id].by === 'you').length
+  const its = built.length - yours
+
+  if (s.ending === 'sleep')
+    return (
+      <div className={`ending sleep ${shown ? 'shown' : ''}`} role="dialog" aria-modal="true" aria-labelledby="end-title">
+        <div className="ending-card">
+          <p className="eyebrow">Session ended</p>
+          <h2 id="end-title">The memory could not hold together.</h2>
+          <p className="lede">Some fragments will stay for the next attempt. Whether they are the right ones, nobody can say.</p>
+          <button className="wake" onClick={() => location.reload()}>
+            Try again tomorrow
+          </button>
+        </div>
+      </div>
+    )
   return (
-    <div className="modal discovery" role="dialog" aria-modal="true" aria-labelledby="discovery-title">
-      <div className="modal-card">
-        <p className="eyebrow">Week 4 · Day 28</p>
-        <h1 id="discovery-title">“The outbreak didn't begin here.”</h1>
-        <p className="story">
-          Evidence points to a concealed research complex beneath Weimar. The source of the outbreak may be closer than
-          anyone imagined.
+    <div className={`ending remembered ${shown ? 'shown' : ''}`} role="dialog" aria-modal="true" aria-labelledby="end-title">
+      <div className="ending-card">
+        <p className="eyebrow">The reconstruction holds · coherence {s.coherence}%</p>
+        <h2 id="end-title">Did we remember it, or did we make it together?</h2>
+        <p className="lede">
+          {yours} {yours === 1 ? 'piece' : 'pieces'} came from your answers. {its} the memory placed by itself. It made {s.decisions.length} decisions nobody asked for.
         </p>
-        <button className="primary reveal" onClick={onReveal}>
-          Reveal underground lab
-        </button>
-        <button className="link" onClick={onStay}>
-          Stay on the surface
-        </button>
+        <div className="ending-lists">
+          <Scene els={s.els} only={built} />
+        </div>
+        <p className="how">
+          <button className="wake" onClick={() => location.reload()}>
+            Remember again
+          </button>{' '}
+          <button className="wake" onClick={fresh}>
+            Forget everything
+          </button>
+        </p>
       </div>
-    </div>
-  )
-}
-
-// Captions while the section opens, before the surveillance feed comes up.
-function Descent() {
-  return (
-    <div className="descent" role="status">
-      <p>Tracing the signal beneath the city</p>
-      <p>Cutting a section through Weimar</p>
-      <p>Sublevel complex detected</p>
     </div>
   )
 }

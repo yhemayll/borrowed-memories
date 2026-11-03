@@ -1,54 +1,57 @@
-# Weimar: Survival or the Next Raccoon City?
+# Borrowed Memories
 
-An alternate-history outbreak told on a 3D model of central Weimar. A cinematic introduction tells how a secret Umbrella Corporation facility came to sit beneath the old town. A timeline then follows a fictional viral outbreak through the real streets over four weeks, and ends with the discovery of an underground laboratory.
+A damaged memory is trying to reconstruct one childhood evening: a winter gathering in a Soviet-era apartment. Tea on the table, a samovar on the floor, toys on the carpet, a song, a knock at the door. It can't see the scene clearly. You help, and it decides.
 
-**This is fiction.** Umbrella Corporation, the facility, the sites' roles and the outbreak are invented. Only the buildings and streets are real, from open data. Nothing here makes a claim about Weimar's history.
+You never type. You click objects, use the radio, and answer the memory's two-choice questions. An AI (Claude Haiku) watches what you do, keeps its own interpretation, and decides on its own what to ask, reveal, change or remove next. **Memory activity** shows what it observed, what it decided, what changed and why.
 
-Live site: https://yhemayll.github.io/latent-intuition/
+**Are we recovering a real memory, or constructing a new one together?**
+
+> **AI intelligence runs locally.** Open the project on localhost to experience the interactive memory system. The published GitHub Pages site shows the room, but it can't reach your computer's Claude CLI.
 
 ## Run it
 
+You need Node.js 20+ and the [Claude Code CLI](https://docs.claude.com/en/docs/claude-code), logged in (`claude` works in a terminal). No API key is used or stored.
+
 ```
-npm install     install the packages
-npm run dev     start the app at http://localhost:5173
+npm install
+npm run dev        then open http://localhost:5173 with sound on
 ```
 
-Drag to orbit, right-drag to pan, scroll to zoom. Move the slider, click a week, or press play.
+`npm run dev` starts the page and the local AI backend together. Tests that use no tokens:
 
-## How the outbreak is built
+```
+node server/check-validator.mjs   malformed AI answers are rejected
+node server/check-mind.mjs        answers, contradictions and both endings, with made-up AI answers
+```
 
-- **Sites.** Fourteen outbreak sites stand on real buildings of the kit, chosen by their use in `buildings.geojson`: the kit's only industrial unit is Site 0, then clinics, a transit depot, a school, a market hall and so on. Their names and roles are fictional. Each site has a week when it ignites and the site that infected it, drawn as an arc.
-- **Spread.** From each site the infection travels along the pedestrian network, faster for later sites as containment fails. A street point is infected at the earliest time any site reaches it. A building turns shortly after the street node nearest to it. About 5% of buildings never turn.
-- **Markers.** A dot on each infected roof and every 12 m along infected streets, from faint red to crimson over about nine days, with a faint glow on the ground for the infection zones. Amber dashed rings are quarantine perimeters from week 3.
-- **Deterministic.** Everything is worked out once from the data, with no randomness, so a week always looks the same, going forward or backward.
-- **Separate from the city.** The outbreak (`src/outbreak.js`, `src/OutbreakLayer.jsx`) reads the city but never changes its geometry (`src/city.js`, `src/CityScene.jsx`).
+## How it works
 
-## The underground laboratory
+- **Pieces of the memory** (`src/mind.js`): mother, father, child, grandmother, three toys, tea table, samovar, both carpets, television, radio, weather and the knock. Each has a status (*unknown, suggested, reconstructed, uncertain, contradicted, removed*), your answer, evidence, the AI's interpretation and a confidence. The room draws each status differently: silhouette, faint, clear, blurred, glitching, gone. The photograph on the wall shows only the people reconstructed so far.
+- **When the AI is asked.** Your actions add weight: looking at something again, choosing Katyusha, answering a question, standing still. The AI is called only when enough has built up, never for every click. It gets a short summary of the scene, what happened since its last decision, and its last three decisions with their results.
+- **What it can do.** It must choose one of 13 actions (`src/actions.js`): ask a question, reveal, remove or alter an element, change the weather or the music, replace the radio with a television, a voice, a knock, open the front door, reveal grandmother, destabilise or restore the scene. The answer is checked in the backend and again in the page. Anything invalid becomes "wait". Claude has no tools and can't run code.
+- **Your answers.** Answer A means the element was there (for the weather: snow); answer B means it wasn't (rain). Changing an earlier answer, or the AI acting against one (for example bringing back someone you said wasn't there), turns the element *contradicted*.
+- **Coherence** starts at 100% and drops with contradictions, uncertainty and destabilisation. The room blurs and the music drifts out of tune. At 35% the doctor interrupts: *"That's enough for today. Take your medication and get some sleep."* Otherwise, after 16 decisions, or once the core of the scene is complete, the reconstruction holds and the ending shows which pieces came from you and which from the memory.
+- **Next attempt.** Pieces reconstructed last time return as faint suggestions, which may or may not be right. "Forget everything" clears them.
+- **Limits:** 16 decisions, 160 characters per text field, 4 kB per answer, 140k tokens per attempt, $0.05 per call. A decision uses about 5–7k tokens.
 
-At week 4, "Reveal underground lab" opens a section through the city centre. The design follows the Hive of the Resident Evil films; the facility, its history and its levels are fiction.
+## Sound
 
-- **Transition.** The infection steps back, the camera rises over the centre, and a vertical section plane sweeps north through the real buildings. The city turns into a pale blue ghost and the ground into glass, so the laboratory shows through from above.
-- **Section.** Everything south of the plane is cut away. Where it cuts a building or the laboratory, the inside shows as a flat section colour; the earth's cut face is navy with section hatching, open where the cavern is.
-- **Laboratory.** An inverted, stepped tower of octagonal tiers in five levels, B1 to B5, hanging on a glass shaft from the surface to 430 m below. A lift stops at each level. Lattice arms, bridges, tanks, two inclined access tunnels to hatches in the city, and an older tunnel towards Site 0.
-- **Interface.** An Umbrella surveillance feed: facility status, a schematic with the lift's position, containment by level, the lift's depth and a mission time. Four camera angles; in between, the mouse orbits in a limited range so the section stays in view. "Return to the surface" runs the reveal back.
-- **Infection.** The red markers stay on the city above, fainter, and are cut by the section with the buildings.
-- **Code.** `src/lab.js` (layout, timing, geometry), `src/LabScene.jsx` (the laboratory and the cut face), `src/section.js` (the shared plane and clock), `src/Hud.jsx` (the interface). The laboratory never changes the city's geometry.
+Everything is made in the browser with Web Audio. "Katyusha" is a short **original placeholder** march in a similar mood. The real song and its lyrics are still under copyright, so they aren't included; a licensed recording could replace it in `src/sound.js`.
 
-## Data sources
+## Files
 
-All data is in `public/data/`; `SOURCES.md` there describes every file and field.
-
-| Data | Source | Licence |
-| --- | --- | --- |
-| Building footprints and heights | 3D building models LoD2 of Thuringia, © GDI-Th; floors and uses added by Egor Gaydukov | dl-de/by-2-0 |
-| Pedestrian network | Egor Gaydukov, InfAU, Bauhaus-Universität Weimar | |
-| Census grid, 100 m (in the kit, not used by the outbreak) | Zensus 2022, © Statistische Ämter des Bundes und der Länder | dl-de/by-2-0 |
-
-Buildings: 3D building models LoD2 © GDI-Th (dl-de/by-2-0). Land use and pedestrian network: Egor Gaydukov, InfAU, Bauhaus-Universität Weimar. Census grid: Zensus 2022, © Statistische Ämter des Bundes und der Länder (dl-de/by-2-0).
+| File | What it does |
+| --- | --- |
+| `src/Room.jsx`, `src/room.css` | The room and how each status looks |
+| `src/mind.js` | The reconstruction state, when to ask the AI, executing its actions, endings |
+| `src/actions.js` | Allowed actions, JSON schema, checker |
+| `src/App.jsx`, `src/index.css` | Questions, captions, Memory activity, intro and endings |
+| `src/sound.js` | Music, humming, weather, knock |
+| `server/mind-plugin.js` | Local backend: calls the Claude CLI (dev server only) |
 
 ## How this was made
 
 1. Tools: Claude Code, with the model Claude Opus 5.5.
 2. I decided:
-3. The agent did: read the city kit, then wrote the 3D view, the walking and resident calculations, the panel and this README, and tested the calculations against the data.
+3. The agent did: turned the earlier prototype into this reconstruction with two-choice questions, an AI-driven reconstruction state, two endings and offline tests, and checked it in the browser.
 4. I checked:
